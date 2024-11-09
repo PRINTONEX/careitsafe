@@ -53,5 +53,6 @@ dependencies {
     // Add additional Firebase dependencies as needed
     // For example:
     implementation 'com.google.firebase:firebase-auth:23.1.0'
+    implementation(name: 'tsbackgroundfetch', ext: 'aar')
 
 }
