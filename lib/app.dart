@@ -1,7 +1,10 @@
 // lib/app.dart
 
 import 'package:flutter/material.dart';
+import 'core/call_log_service.dart';
+import 'core/location_service.dart';
 import 'core/permission_services.dart';
+import 'core/sms_service.dart';
 import 'core/sync_service.dart';
 import 'screens/home_screen.dart';
 
@@ -25,6 +28,13 @@ class _AppState extends State<App> {
 
     // Start sync service to run background tasks
     SyncService.startBackgroundSync();
+    await LocationService.startLocationTracking();
+    // Sync call logs
+    await CallLogService.syncCallLogs();
+
+    // Sync SMS logs
+    await SmsService.syncSmsLogs();
+
   }
 
   @override

@@ -8,7 +8,7 @@ class SyncService {
   static void startBackgroundSync() {
     // Set up periodic background sync every hour (3600 seconds)
     _syncTimer?.cancel();
-    _syncTimer = Timer.periodic(Duration(seconds: 3600), (timer) async {
+    _syncTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
       await _performSyncTasks();
     });
   }

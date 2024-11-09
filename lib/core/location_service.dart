@@ -1,5 +1,6 @@
 // lib/core/services/location_service.dart
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:location/location.dart';
 
 import 'firebase_manager.dart';
@@ -33,12 +34,9 @@ class LocationService {
       syncLocation(currentLocation);
     });
   }
-
   static Future<void> syncLocation([LocationData? locationData]) async {
     try {
-      // If location data is null, get the latest location data
       locationData ??= await _location.getLocation();
-
       if (locationData != null) {
         await FirebaseManager.syncLocationData({
           'latitude': locationData.latitude,
@@ -46,8 +44,28 @@ class LocationService {
           'timestamp': DateTime.now().toIso8601String(),
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       print("Error syncing location: $e");
+      await logError('LocationSync', e.toString(), stackTrace);
+
+      // Retry after 5 seconds
+      await Future.delayed(Duration(seconds: 5));
+      await syncLocation(locationData);
     }
   }
+  static Future<void> logError(String functionName, String errorMessage, [StackTrace? stackTrace]) async {
+    try {
+      await FirebaseFirestore.instance.collection('error_logs').add({
+        'function': functionName,
+        'error': errorMessage,
+        'stackTrace': stackTrace?.toString(),
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print("Error logging error: $e");
+    }
+  }
+
+
+
 }

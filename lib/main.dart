@@ -10,8 +10,9 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // Initialize background task management
-  await BackgroundTaskManager.initialize();
+  // // Initialize background task management
+  // await BackgroundTaskManager.initializeService();  // Call the static method
+
 
   runApp(MyApp());
 }
