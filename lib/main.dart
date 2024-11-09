@@ -1,14 +1,12 @@
-import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:careitsafe/CallLogListPage.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:firebase_core/firebase_core.dart';
 
-import 'constant.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Firebase for the app
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(MyApp());
 }
@@ -17,7 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Permission Check Animation',
+      title: 'Digital SafeGuard',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
@@ -33,33 +31,14 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<MapEntry<String, Permission>> _permissions = [
-    // Permissions for location
     MapEntry('Location', Permission.location),
-    MapEntry('Location Background', Permission.locationAlways),
-    MapEntry('Location Coarse', Permission.locationWhenInUse),
-// Permissions for call logs and phone state
     MapEntry('Call Log', Permission.phone),
-
-    // Permissions for SMS
     MapEntry('SMS', Permission.sms),
-    // Permissions for accessing contacts
     MapEntry('Contacts', Permission.contacts),
-
-
-    // Permissions for camera
     MapEntry('Camera', Permission.camera),
-
-    // Permissions for microphone
     MapEntry('Microphone', Permission.microphone),
-
-    // Permissions for storage (external)
     MapEntry('Storage', Permission.storage),
-
-    // Permissions for notifications
     MapEntry('Notification Access', Permission.notification),
-// Permissions for Bluetooth
-    MapEntry('Bluetooth', Permission.bluetooth),
-    MapEntry('App Upadate', Permission.requestInstallPackages),
   ];
 
   Map<String, PermissionStatus> _permissionsStatus = {};
@@ -72,10 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     for (var entry in _permissions) {
-      // Request permission
       PermissionStatus status = await entry.value.request();
-
-      // Print the status for debugging
       print('Permission: ${entry.key}, Status: $status');
 
       await Future.delayed(Duration(milliseconds: 300));
@@ -87,15 +63,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     setState(() {
       _isCheckingPermissions = false;
-    });
-  }
-
-
-  Future<void> _requestSinglePermission(
-      Permission permission, String permissionName) async {
-    PermissionStatus status = await permission.request();
-    setState(() {
-      _permissionsStatus[permissionName] = status;
     });
   }
 
@@ -114,16 +81,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? Colors.green
                   : Colors.red,
             ),
-            title: Text(
-              permissionName,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            title: GestureDetector(
+              onTap: () {
+                if (status == PermissionStatus.granted) {
+                  _navigateToPermissionPage(permissionName);
+                } else {
+                  _requestSinglePermission(permission, permissionName);
+                }
+              },
+              child: Text(
+                permissionName,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
             ),
           ),
         ),
         if (status != PermissionStatus.granted)
           ElevatedButton(
-            onPressed: () =>
-                _requestSinglePermission(permission, permissionName),
+            onPressed: () => _requestSinglePermission(permission, permissionName),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.greenAccent,
               shape: RoundedRectangleBorder(
@@ -133,6 +108,47 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
       ],
     );
+  }
+
+  Future<void> _requestSinglePermission(
+      Permission permission, String permissionName) async {
+    PermissionStatus status = await permission.request();
+    setState(() {
+      _permissionsStatus[permissionName] = status;
+    });
+  }
+
+  void _navigateToPermissionPage(String permissionName) {
+    switch (permissionName) {
+      case 'Location':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => LocationListPage()),
+        );
+        break;
+      case 'Call Log':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => CallLogListPage()),
+        );
+        break;
+      case 'SMS':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => SmsListPage()),
+        );
+        break;
+      case 'Contacts':
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ContactsListPage()),
+        );
+        break;
+    // Add more cases as needed for other permissions.
+      default:
+        print('Page for $permissionName not yet implemented');
+        break;
+    }
   }
 
   @override
@@ -145,8 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ..._permissions
-                  .map(
-                      (entry) => _buildPermissionStatus(entry.key, entry.value))
+                  .map((entry) => _buildPermissionStatus(entry.key, entry.value))
                   .toList(),
               SizedBox(height: 30),
               ElevatedButton(
@@ -167,6 +182,40 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// Example pages for each permission type
+
+class LocationListPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Location List')),
+      body: Center(child: Text('Display location data here')),
+    );
+  }
+}
+
+
+
+class SmsListPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('SMS List')),
+      body: Center(child: Text('Display SMS data here')),
+    );
+  }
+}
+
+class ContactsListPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Contacts List')),
+      body: Center(child: Text('Display contacts data here')),
     );
   }
 }

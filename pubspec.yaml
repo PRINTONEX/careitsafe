@@ -34,7 +34,7 @@ dependencies:
   firebase_analytics:
   firebase_core:
   firebase_auth:
-#  call_log:
+  call_log:
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
