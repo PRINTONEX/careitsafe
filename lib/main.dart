@@ -33,17 +33,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final List<MapEntry<String, Permission>> _permissions = [
+    // Permissions for location
+    MapEntry('Location', Permission.location),
+    MapEntry('Location Background', Permission.locationAlways),
+    MapEntry('Location Coarse', Permission.locationWhenInUse),
 // Permissions for call logs and phone state
     MapEntry('Call Log', Permission.phone),
+
     // Permissions for SMS
     MapEntry('SMS', Permission.sms),
     // Permissions for accessing contacts
     MapEntry('Contacts', Permission.contacts),
 
-    // Permissions for location
-    MapEntry('Location', Permission.location),
-    MapEntry('Location Background', Permission.locationAlways),
-    MapEntry('Location Coarse', Permission.locationWhenInUse),
+
     // Permissions for camera
     MapEntry('Camera', Permission.camera),
 
@@ -70,9 +72,14 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     for (var entry in _permissions) {
+      // Request permission
       PermissionStatus status = await entry.value.request();
+
+      // Print the status for debugging
+      print('Permission: ${entry.key}, Status: $status');
+
       await Future.delayed(Duration(milliseconds: 300));
-      print(_permissions);
+
       setState(() {
         _permissionsStatus[entry.key] = status;
       });
@@ -82,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isCheckingPermissions = false;
     });
   }
+
 
   Future<void> _requestSinglePermission(
       Permission permission, String permissionName) async {
