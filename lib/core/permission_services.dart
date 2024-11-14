@@ -4,14 +4,13 @@ import 'package:permission_handler/permission_handler.dart';
 
 class PermissionService {
   static final List<Permission> _requiredPermissions = [
-    Permission.location,
+    Permission.activityRecognition,
     Permission.phone,
     Permission.sms,
-    Permission.contacts,
-    Permission.camera,
-    Permission.microphone,
-    Permission.storage,
     Permission.notification,
+    Permission.location,
+    // Permission.locationAlways
+
   ];
 
   static Future<void> checkAndRequestPermissions() async {

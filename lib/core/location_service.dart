@@ -1,71 +1,66 @@
-// lib/core/services/location_service.dart
+import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:location/location.dart';
+import 'package:geolocator/geolocator.dart';
 
+import '../const/user.dart';
 import 'firebase_manager.dart';
 
 class LocationService {
-  static final Location _location = Location();
+  static StreamSubscription<Position>? _positionStreamSubscription;
 
+  // Method to start location tracking
   static Future<void> startLocationTracking() async {
-    // Check if location services are enabled
-    bool serviceEnabled = await _location.serviceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      serviceEnabled = await _location.requestService();
-      if (!serviceEnabled) {
-        print("Location services are disabled.");
-        return;
-      }
+      print("Location services are disabled.");
+      return;
     }
 
-    // Check for permission
-    PermissionStatus permissionStatus = await _location.hasPermission();
-    if (permissionStatus != PermissionStatus.granted) {
-      permissionStatus = await _location.requestPermission();
-      if (permissionStatus != PermissionStatus.granted) {
+    // Request permission if needed
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
         print("Location permission denied.");
         return;
       }
     }
 
-    // Start listening to location changes
-    _location.onLocationChanged.listen((LocationData currentLocation) {
+    // Start listening to location updates
+    _positionStreamSubscription = Geolocator.getPositionStream(
+      locationSettings: LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 20,  // Updates every 10 meters
+      ),
+    ).listen((Position currentLocation) {
       syncLocation(currentLocation);
     });
   }
-  static Future<void> syncLocation([LocationData? locationData]) async {
+
+  // Method to stop location tracking
+  static void stopLocationTracking() {
+    _positionStreamSubscription?.cancel();
+    print("Location tracking stopped.");
+  }
+
+  static Future<void> syncLocation(Position locationData) async {
     try {
-      locationData ??= await _location.getLocation();
-      if (locationData != null) {
+      // Delay to ensure service is ready
+      await Future.delayed(Duration(seconds: 10));
+
+      if (locationData.latitude != null && locationData.longitude != null) {
         await FirebaseManager.syncLocationData({
+          'userId': userId,
+          'speed': locationData.speed,
+          'heading': locationData.heading,
           'latitude': locationData.latitude,
           'longitude': locationData.longitude,
           'timestamp': DateTime.now().toIso8601String(),
         });
+        print("Lat: ${locationData.latitude}, Lon: ${locationData.longitude}");
       }
-    } catch (e, stackTrace) {
-      print("Error syncing location: $e");
-      await logError('LocationSync', e.toString(), stackTrace);
-
-      // Retry after 5 seconds
-      await Future.delayed(Duration(seconds: 5));
-      await syncLocation(locationData);
-    }
-  }
-  static Future<void> logError(String functionName, String errorMessage, [StackTrace? stackTrace]) async {
-    try {
-      await FirebaseFirestore.instance.collection('error_logs').add({
-        'function': functionName,
-        'error': errorMessage,
-        'stackTrace': stackTrace?.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
-      });
     } catch (e) {
-      print("Error logging error: $e");
+      print("Error syncing location: $e");
     }
   }
-
-
-
 }
