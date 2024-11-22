@@ -9,6 +9,9 @@ class PermissionService {
     Permission.sms,
     Permission.notification,
     Permission.location,
+    Permission.contacts,
+    
+
     // Permission.locationAlways
 
   ];

