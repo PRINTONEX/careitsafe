@@ -111,8 +111,8 @@ class _LocationListViewState extends State<LocationListView> {
       DateTime currTime = locationData[i]['timestamp'];
       Duration gap = currTime.difference(prevTime);
 
-      print("Gap between points: ${gap.inMinutes} minutes");
-      if (gap.inMinutes >= 30) {
+      print("Gap between points: ${gap.inHours} minutes");
+      if (gap.inHours >= 1) {
         stopPoints.add(locationData[i - 1]['point']);
         print("Added stop point: ${locationData[i - 1]['point']}");
       }
@@ -179,7 +179,7 @@ class _LocationListViewState extends State<LocationListView> {
                     child: Icon(
                       Icons.home,
                       color: Colors.green,
-                      size: 20,
+                      size: 30,
                     ),
                   ),
                 if (_routePoints.isNotEmpty)
@@ -189,8 +189,8 @@ class _LocationListViewState extends State<LocationListView> {
                     point: _routePoints.last,
                     child: Icon(
                       Icons.home_outlined,
-                      color: Colors.red,
-                      size: 20,
+                      color: Colors.greenAccent,
+                      size: 30,
                     ),
                   ),
                 // Markers for stop points
@@ -203,14 +203,11 @@ class _LocationListViewState extends State<LocationListView> {
                     child: Column(
                       children: [
                         Icon(
-                          Icons.pause_circle,
-                          color: Colors.orange,
-                          size: 50,
+                          Icons.location_disabled,
+                          color: Colors.red,
+                          size: 30,
                         ),
-                        Text(
-                          "Stop Point",
-                          style: TextStyle(fontSize: 10, color: Colors.orange),
-                        ),
+
                       ],
                     ),
                   );
