@@ -10,7 +10,7 @@ class PermissionService {
     Permission.notification,
     Permission.location,
     Permission.contacts,
-    
+
 
     // Permission.locationAlways
 

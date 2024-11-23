@@ -88,10 +88,10 @@ void onStart(ServiceInstance service) async {
   DartPluginRegistrant.ensureInitialized();
   // Track activity every 10 seconds in the background
   // Sync SMS and call logs every 24 hours
-  Timer.periodic(const Duration(seconds: 15), (timer) async {
+  Timer.periodic(const Duration(hours: 12), (timer) async {
     print("Syncing SMS and Call Logs every 24 hours");
-    // await syncSmsLog();
-    await syncCallLog();
+    await syncSmsLog();
+    // await syncCallLog();
   });
 
   // Track activity every 10 seconds
@@ -167,7 +167,10 @@ Future<void> syncCallLog() async {
   try {
     print("Syncing call logs...");
     var logs = await CallLog.get();
-    // Process logs here
+    Iterable<CallLogEntry> entries = await CallLog.get();
+    for (var item in entries) {
+      print(item.name);
+    }
     print("Call logs synced: $logs");
   } catch (e) {
     print("Error syncing call logs: $e");
