@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +21,25 @@ class _LocationListViewState extends State<LocationListView> {
   List<LatLng> _stopPoints = [];
   String _formattedDate(DateTime date) =>
       DateFormat('dd-MMM-yyyy').format(date);
+  String? _startAddress;
+  String? _endAddress;
+// Function to get an address from coordinates
+  Future<String?> _getAddressFromLatLng(LatLng point) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        point.latitude,
+        point.longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        Placemark placemark = placemarks[1];
 
+        return "${placemark.name},${placemark.subLocality}, ${placemark.locality}, ${placemark.country}";
+      }
+    } catch (e) {
+      print("Error fetching address: $e");
+    }
+    return null;
+  }
   Stream<QuerySnapshot> _locationStream() {
     DateTime startOfDay =
     DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day);
@@ -58,67 +77,94 @@ class _LocationListViewState extends State<LocationListView> {
         .map((point) => LatLng(point['lat'], point['lng']))
         .toList();
   }
-
   Future<void> _fetchData() async {
+    // Check if selected date is today
+    bool isToday = _selectedDate.year == DateTime.now().year &&
+        _selectedDate.month == DateTime.now().month &&
+        _selectedDate.day == DateTime.now().day;
+
     setState(() => _isLoading = true); // Show loading indicator
-    List<LatLng>? cachedData = await _getCachedData(_selectedDate);
 
-    if (cachedData != null) {
-      setState(() {
-        _routePoints = cachedData;
-        _isLoading = false; // Hide loading indicator
-      });
-      _updateMapCenter();
-    } else {
-      _locationStream().listen((snapshot) {
-        List<Map<String, dynamic>> locationData = [];
-        List<LatLng> routePoints = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          locationData.add({
-            'timestamp': DateTime.parse(data['timestamp']),
-            'point': LatLng(data['latitude'], data['longitude']),
-          });
-          return LatLng(data['latitude'], data['longitude']);
-        }).toList();
-
-        // Identify stop points
-        List<LatLng> stopPoints = _identifyStopPoints(locationData);
-        print("Stop points after processing: $stopPoints");
-
-        _cacheData(routePoints, _selectedDate);
+    if (!isToday) {
+      // For past dates, first try to get cached data
+      List<LatLng>? cachedData = await _getCachedData(_selectedDate);
+      if (cachedData != null) {
+        // If cached data exists, use it
         setState(() {
-          _routePoints = routePoints;
-          _stopPoints = stopPoints;
-          print("Route points updated: $_routePoints");
-          print("Stop points updated: $_stopPoints");
+          _routePoints = cachedData;
           _isLoading = false; // Hide loading indicator
         });
+        if (_routePoints.isNotEmpty) {
+          String? startAddress = await _getAddressFromLatLng(_routePoints.last);
+          String? endAddress = await _getAddressFromLatLng(_routePoints.first);
+
+          setState(() {
+            _startAddress = startAddress;
+            _endAddress = endAddress;
+          });
+        }
         _updateMapCenter();
-      });
+        return;
+      }
     }
+
+    // For live data or when no cached data is available
+    _locationStream().listen((snapshot) async {
+      List<Map<String, dynamic>> locationData = [];
+      List<LatLng> routePoints = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        locationData.add({
+          'timestamp': DateTime.parse(data['timestamp']),
+          'point': LatLng(data['latitude'], data['longitude']),
+        });
+        return LatLng(data['latitude'], data['longitude']);
+      }).toList();
+
+      // Identify stop points
+      List<LatLng> stopPoints = _identifyStopPoints(locationData);
+
+      if (!isToday) {
+        // Cache the data for past dates
+        await _cacheData(routePoints, _selectedDate);
+      }
+
+      setState(() {
+        _routePoints = routePoints;
+        _stopPoints = stopPoints;
+        _isLoading = false; // Hide loading indicator
+      });
+
+      // Update map center if routePoints is not empty
+      if (_routePoints.isNotEmpty) {
+        if (_routePoints.isNotEmpty) {
+          String? startAddress = await _getAddressFromLatLng(_routePoints.last);
+          String? endAddress = await _getAddressFromLatLng(_routePoints.first);
+
+          setState(() {
+            _startAddress = startAddress;
+            _endAddress = endAddress;
+          });
+        }
+        _updateMapCenter();
+      }
+    });
   }
+
 
   List<LatLng> _identifyStopPoints(List<Map<String, dynamic>> locationData) {
     List<LatLng> stopPoints = [];
-    print("Location data received: $locationData");
-
     if (locationData.isEmpty) return stopPoints;
-
     locationData.sort((a, b) => a['timestamp'].compareTo(b['timestamp']));
-
     for (int i = 1; i < locationData.length; i++) {
       DateTime prevTime = locationData[i - 1]['timestamp'];
       DateTime currTime = locationData[i]['timestamp'];
       Duration gap = currTime.difference(prevTime);
 
-      print("Gap between points: ${gap.inHours} minutes");
       if (gap.inHours >= 1) {
         stopPoints.add(locationData[i - 1]['point']);
-        print("Added stop point: ${locationData[i - 1]['point']}");
+
       }
     }
-
-    print("Stop points identified: $stopPoints");
     return stopPoints;
   }
 
@@ -129,7 +175,6 @@ class _LocationListViewState extends State<LocationListView> {
   void _updateMapCenter() {
     if (_routePoints.isNotEmpty) {
       LatLng centerPoint = _routePoints[_routePoints.length ~/ 2];
-      print("Center -----------------------$centerPoint");
       _mapController.move(centerPoint, 12);
     } else {
       _mapController.move(LatLng(24.8090634, 93.9436556), 12);
@@ -156,7 +201,7 @@ class _LocationListViewState extends State<LocationListView> {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.example.app',
+              userAgentPackageName: 'com.kangleiinovations.careitsafe',
             ),
             if (_routePoints.isNotEmpty)
               PolylineLayer(
@@ -177,7 +222,7 @@ class _LocationListViewState extends State<LocationListView> {
                     height: 80,
                     point: _routePoints.first,
                     child: Icon(
-                      Icons.home,
+                      Icons.gps_fixed,
                       color: Colors.green,
                       size: 30,
                     ),
@@ -195,7 +240,6 @@ class _LocationListViewState extends State<LocationListView> {
                   ),
                 // Markers for stop points
                 ..._stopPoints.map((stopPoint) {
-                  print("Rendering stop point marker: $stopPoint");
                   return Marker(
                     width: 60,
                     height: 60,
@@ -203,7 +247,7 @@ class _LocationListViewState extends State<LocationListView> {
                     child: Column(
                       children: [
                         Icon(
-                          Icons.location_disabled,
+                          Icons.location_history,
                           color: Colors.red,
                           size: 30,
                         ),
@@ -215,7 +259,47 @@ class _LocationListViewState extends State<LocationListView> {
 
               ],
             ),
-
+            if (_startAddress != null && _endAddress != null)
+              Positioned(
+                top: 1,
+                left: 16,
+                right: 16,
+                child: Card(
+                  color: Colors.white.withOpacity(0.5),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.home),
+                            Text(
+                              " ${_startAddress}",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(Icons.location_history),
+                            Text(
+                              " ${_endAddress}",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
 

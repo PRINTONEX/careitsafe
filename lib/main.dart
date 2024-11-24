@@ -250,17 +250,14 @@ class _MyAppState extends State<MyApp> {
               ],
             ),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TabBarView(
-              children: [
-                SettingPage(),    // 1. Setting Page
-                LocationListView(),   // 2. Location View
-                 CallLogView(),        // 3. Call Log (This is an example, you need to define this widget)
-                 SmsLogView(),         // 4. SMS Log (This is an example, you need to define this widget)
-                 NotificationLogView(),// 5. Notification Log (This is an example, you need to define this widget)
-              ],
-            ),
+          body: TabBarView(
+            children: [
+              SettingPage(),    // 1. Setting Page
+              LocationListView(),   // 2. Location View
+               CallLogView(),        // 3. Call Log (This is an example, you need to define this widget)
+               SmsLogView(),         // 4. SMS Log (This is an example, you need to define this widget)
+               NotificationLogView(),// 5. Notification Log (This is an example, you need to define this widget)
+            ],
           ),
         ),
       ),
