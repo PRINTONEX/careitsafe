@@ -38,6 +38,7 @@ dependencies:
   firebase_core:
   firebase_auth:
   cloud_firestore:
+  appwrite: ^13.0.0
   mobile_number:
   telephony:
   call_log:

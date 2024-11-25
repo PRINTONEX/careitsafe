@@ -59,11 +59,12 @@ class _SettingPageState extends State<SettingPage> {
   Widget build(BuildContext context) {
     return GridView.builder(
       shrinkWrap: true,  // Ensures GridView takes only the required space
-      physics: NeverScrollableScrollPhysics(),  // Disable internal scrolling, as it's already in a scrollable parent
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+      physics: const NeverScrollableScrollPhysics(),  // Disable internal scrolling, as it's already in a scrollable parent
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,  // 2 items per row
-        crossAxisSpacing: 8,  // Horizontal spacing between items
-        mainAxisSpacing: 8,   // Vertical spacing between items
+        crossAxisSpacing: 8.0,  // Horizontal spacing between items
+        mainAxisSpacing: 8.0,
+        childAspectRatio: 1.6,// Vertical spacing between items
       ),
       itemCount: _activityOptions.length,
       itemBuilder: (context, index) {
@@ -94,7 +95,8 @@ class _SettingPageState extends State<SettingPage> {
         bool isSelected = _selectedActivities.contains(activity); // Check if this activity is selected
 
         return Card(
-          elevation: isSelected ? 20 : 3,  // Higher elevation when selected
+          margin: const EdgeInsets.only(left: 5, right: 5, top: 8),
+          elevation: isSelected ? 30 : 1,  // Higher elevation when selected
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),  // Rounded corners for smooth look
           ),
