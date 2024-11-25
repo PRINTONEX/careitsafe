@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'package:appwrite/appwrite.dart';
 import 'package:call_log/call_log.dart';
 import 'package:careitsafe/widgets/call_log_view.dart';
 import 'package:careitsafe/widgets/setting_page.dart';
@@ -12,6 +13,8 @@ import 'package:flutter_activity_recognition/flutter_activity_recognition.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mobile_number/mobile_number.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:telephony/telephony.dart';
 import 'const/user.dart';
 import 'core/firebase_manager.dart';
@@ -23,13 +26,63 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Check and request permissions
   await PermissionService.checkAndRequestPermissions();
-  // Initialize Firebase only once in the main isolate
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Initialize the background service
+   // Initialize the background service
+  createUserWithPhoneNumber();
   await initializeService();
   runApp(const MyApp());
 }
+Future<void> createUserWithPhoneNumber() async {
+  Client client = Client();
+  client
+      .setEndpoint('https://cloud.appwrite.io/v1') // Replace with your Appwrite endpoint
+      .setProject('6743294d00291ef6d400') // Replace with your Appwrite project ID
+      .setSelfSigned(); // For self-signed certificates (use only if necessary)
 
+  try {
+    Account account = Account(client);
+
+    // Get the phone number
+    String? phoneNumber = await getPhoneNumber();
+
+    if (phoneNumber != null) {
+      // Create the user in Appwrite
+      var result = await account.create(
+        userId: phoneNumber, // Generates a unique ID for the user
+        email: "$phoneNumber@gmail.com",
+        password: phoneNumber,
+       // Use the retrieved phone number
+          // Optionally, provide a default user name
+      );
+      // Save userId in shared preferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', userId);
+      print('User created successfully: ${result.toMap()}');
+    } else {
+      print('Phone number is null. Cannot create user.');
+    }
+  } catch (e) {
+    print('Error creating user: $e');
+  }
+}
+
+Future<String?> getPhoneNumber() async {
+  try {
+    String? mobileNumber = await MobileNumber.mobileNumber;
+
+    if (mobileNumber != null && mobileNumber.length >= 10) {
+      // Extract the last 10 digits
+      String lastTenDigits = mobileNumber.substring(mobileNumber.length - 10);
+      print("Last 10 digits: $lastTenDigits");
+      return lastTenDigits;
+    } else {
+      print("Invalid or null mobile number");
+      return null;
+    }
+  } catch (e) {
+    print("Error fetching phone number: $e");
+    return null;
+  }
+}
 Future<void> initializeService() async {
   final service = FlutterBackgroundService();
 
